@@ -91,11 +91,18 @@ jobs:
     - name: Fix libustream SSL backend conflict
       run: |
         cd openwrt
-        # 24.10 里 ./scripts/config 是目录，不能用；直接改 .config 最稳
-        # 禁用 mbedtls 版，强制 openssl 版，避免 libustream-ssl.so 冲突
-        sed -i 's/^CONFIG_PACKAGE_libustream-mbedtls20201210=y/# CONFIG_PACKAGE_libustream-mbedtls20201210 is not set/' .config || true
-        grep -q '^CONFIG_PACKAGE_libustream-openssl20201210=y$' .config || echo 'CONFIG_PACKAGE_libustream-openssl20201210=y' >> .config
+        # 强制只保留 mbedtls，禁用 openssl，避免 libustream-ssl.so 冲突
+        sed -i 's/^CONFIG_PACKAGE_libustream-openssl20201210=y/# CONFIG_PACKAGE_libustream-openssl20201210 is not set/' .config || true
+        # 也处理一下可能出现的 =m 情况（模块）
+        sed -i 's/^CONFIG_PACKAGE_libustream-openssl20201210=m/# CONFIG_PACKAGE_libustream-openssl20201210 is not set/' .config || true
+    
+        # 确保 mbedtls 版至少是 y 或 m（不强求写死 y，让依赖决定）
+        # 如果你想写死也可以：echo "CONFIG_PACKAGE_libustream-mbedtls20201210=y" >> .config
         make defconfig
+    
+        echo "=== libustream selection ==="
+        grep -E 'libustream-(openssl|mbedtls)20201210' .config || true
+        echo "============================"
 
     - name: Download package
       id: package
